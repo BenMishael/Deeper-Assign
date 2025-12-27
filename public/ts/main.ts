@@ -24,7 +24,7 @@ import {
 } from './state.js';
 import type { PublisherEntry, AppState } from './types.js';
 import { $id, clearChildren, h, show, hide, on } from './utils/dom.js';
-import { renderEditor } from './components/editor.js';
+import { renderEditor, clearEditingState } from './components/editor.js';
 
 // ============================================================================
 // DOM References
@@ -196,19 +196,31 @@ function handleStateChange(state: AppState, changedKeys: (keyof AppState)[]): vo
   }
   
   // Config loaded or error
-  if (changedKeys.includes('workingConfig') || changedKeys.includes('configError')) {
+  if (changedKeys.includes('originalConfig') || changedKeys.includes('configError')) {
     if (state.configError) {
       elements.errorMessage.textContent = state.configError;
       showContentState('error');
     } else if (state.workingConfig) {
       showContentState('editor');
       updateEditorTitle(state.workingConfig.aliasName);
-      renderEditor(state.workingConfig);
+      // Only render editor when originalConfig changes (new publisher loaded)
+      // Not when workingConfig changes (user editing)
+      if (changedKeys.includes('originalConfig')) {
+        renderEditor(state.workingConfig);
+      }
       updatePreview(state.workingConfig);
       updateDirtyState();
     } else if (!state.selectedPublisherId) {
       showContentState('empty');
     }
+  }
+  
+  // Update preview when workingConfig changes (but don't re-render form)
+  if (changedKeys.includes('workingConfig') && !changedKeys.includes('originalConfig')) {
+    if (state.workingConfig) {
+      updatePreview(state.workingConfig);
+    }
+    updateDirtyState();
   }
   
   // Dirty state changed
@@ -267,6 +279,9 @@ function updateDirtyState(): void {
  * Handle publisher selection
  */
 async function handlePublisherSelect(publisherId: string, filename: string): Promise<void> {
+  // Clear editing state to re-enable animations for the new publisher
+  clearEditingState();
+  
   selectPublisher(publisherId);
   setConfigLoading();
   

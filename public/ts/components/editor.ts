@@ -10,6 +10,35 @@ import { h, clearChildren } from '../utils/dom.js';
 import { store, updateWorkingConfig, hasUnsavedChanges } from '../state.js';
 
 // ============================================================================
+// State Management
+// ============================================================================
+
+/**
+ * Mark the form as being actively edited
+ * Animations are disabled during editing and only re-enabled when switching publishers
+ */
+function setEditingState(isEditing: boolean): void {
+  const form = document.getElementById('config-form');
+  if (!form) return;
+  
+  if (isEditing) {
+    form.classList.add('editing');
+  }
+  // Note: We don't remove the editing class here
+  // It will be removed only when a new publisher is selected
+}
+
+/**
+ * Clear editing state (called when switching publishers)
+ */
+export function clearEditingState(): void {
+  const form = document.getElementById('config-form');
+  if (form) {
+    form.classList.remove('editing');
+  }
+}
+
+// ============================================================================
 // Field Metadata Configuration
 // ============================================================================
 
@@ -63,7 +92,12 @@ function renderTextField(config: FieldConfig, value: string, onChange: (value: s
     readonly: config.type === 'readonly',
   }) as HTMLInputElement;
   
-  input.addEventListener('input', () => onChange(input.value));
+  input.addEventListener('focus', () => setEditingState(true));
+  input.addEventListener('input', () => {
+    setEditingState(true);
+    onChange(input.value);
+  });
+  input.addEventListener('blur', () => setEditingState(false));
   
   return input;
 }
@@ -79,7 +113,10 @@ function renderUrlField(config: FieldConfig, value: string, onChange: (value: st
     placeholder: config.placeholder || 'https://',
   }) as HTMLInputElement;
   
-  input.addEventListener('input', () => onChange(input.value));
+  input.addEventListener('input', () => {
+    setEditingState(true);
+    onChange(input.value);
+  });
   
   return input;
 }
@@ -94,7 +131,11 @@ function renderTextareaField(config: FieldConfig, value: string, onChange: (valu
   }) as HTMLTextAreaElement;
   
   textarea.value = value || '';
-  textarea.addEventListener('input', () => onChange(textarea.value));
+  
+  textarea.addEventListener('input', () => {
+    setEditingState(true);
+    onChange(textarea.value);
+  });
   
   return textarea;
 }
@@ -119,6 +160,7 @@ function renderBooleanField(config: FieldConfig, value: boolean, onChange: (valu
     toggle.classList.toggle('active', newValue);
     toggle.setAttribute('aria-checked', newValue.toString());
     label.textContent = newValue ? 'Enabled' : 'Disabled';
+    setEditingState(true);
     onChange(newValue);
   };
   
@@ -179,11 +221,13 @@ function renderStringArrayField(config: FieldConfig, value: string[] | undefined
         const removeBtn = itemEl.querySelector('button') as HTMLButtonElement;
         
         input.addEventListener('input', () => {
+          setEditingState(true);
           items[index] = input.value;
           onChange([...items]);
         });
         
         removeBtn.addEventListener('click', () => {
+          setEditingState(true);
           items.splice(index, 1);
           onChange([...items]);
           render();
@@ -200,6 +244,7 @@ function renderStringArrayField(config: FieldConfig, value: string[] | undefined
   
   const addBtn = header.querySelector('button') as HTMLButtonElement;
   addBtn.addEventListener('click', () => {
+    setEditingState(true);
     items.push('');
     onChange([...items]);
     render();
@@ -303,6 +348,7 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
         const positionInput = positionGroup.querySelector('input') as HTMLInputElement;
         
         const updatePage = () => {
+          setEditingState(true);
           pages[index] = {
             pageType: typeInput.value,
             selector: selectorInput.value,
@@ -320,6 +366,7 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
         positionInput.addEventListener('input', updatePage);
         
         removeBtn.addEventListener('click', () => {
+          setEditingState(true);
           pages.splice(index, 1);
           onChange([...pages]);
           render();
@@ -336,6 +383,7 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
   
   const addBtn = header.querySelector('button') as HTMLButtonElement;
   addBtn.addEventListener('click', () => {
+    setEditingState(true);
     pages.push({
       pageType: '',
       selector: '',
