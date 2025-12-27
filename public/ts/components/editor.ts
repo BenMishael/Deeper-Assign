@@ -194,7 +194,9 @@ function renderBooleanField(config: FieldConfig, value: boolean, onChange: (valu
   const label = h('span', { className: 'toggle__label' }, value ? 'Enabled' : 'Disabled');
   
   const handleToggle = () => {
-    const newValue = !value;
+    // Read current state from DOM instead of closure value
+    const currentValue = toggle.classList.contains('active');
+    const newValue = !currentValue;
     toggle.classList.toggle('active', newValue);
     toggle.setAttribute('aria-checked', newValue.toString());
     label.textContent = newValue ? 'Enabled' : 'Disabled';
