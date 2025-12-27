@@ -111,6 +111,21 @@ function renderPublisherList(publishers: PublisherEntry[], selectedId: string | 
 }
 
 /**
+ * Update only the active state of publisher items (avoid full re-render)
+ */
+function updatePublisherActiveState(selectedId: string | null): void {
+  const items = elements.publisherList.querySelectorAll('.publisher-item');
+  items.forEach((item) => {
+    const itemId = item.getAttribute('data-id');
+    if (itemId === selectedId) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+/**
  * Show a content state (empty, loading, error, or editor)
  */
 function showContentState(state: 'empty' | 'loading' | 'error' | 'editor'): void {
@@ -171,11 +186,16 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
  * Main state subscriber - updates UI when state changes
  */
 function handleStateChange(state: AppState, changedKeys: (keyof AppState)[]): void {
-  // Publishers list changed
-  if (changedKeys.includes('publishers') || changedKeys.includes('selectedPublisherId')) {
+  // Publishers list changed - full re-render
+  if (changedKeys.includes('publishers')) {
     const filter = elements.publisherSearch.value;
     renderPublisherList(state.publishers, state.selectedPublisherId, filter);
     hide(elements.publisherLoading);
+  }
+  
+  // Only selected publisher changed - just update active state
+  if (changedKeys.includes('selectedPublisherId') && !changedKeys.includes('publishers')) {
+    updatePublisherActiveState(state.selectedPublisherId);
   }
   
   // Loading publishers
