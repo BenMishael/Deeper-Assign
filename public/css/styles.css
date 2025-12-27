@@ -570,6 +570,18 @@ body {
   cursor: not-allowed;
 }
 
+.form-input.error,
+.form-textarea.error {
+  border-color: var(--color-error);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.form-input.error:focus,
+.form-textarea.error:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 .form-textarea {
   min-height: 100px;
   font-family: var(--font-mono);

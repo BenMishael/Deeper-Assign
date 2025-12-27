@@ -95,9 +95,47 @@ function renderTextField(config: FieldConfig, value: string, onChange: (value: s
   input.addEventListener('focus', () => setEditingState(true));
   input.addEventListener('input', () => {
     setEditingState(true);
+    
+    // Validate required fields (especially Display Name / aliasName)
+    if (config.required && config.key === 'aliasName') {
+      const trimmedValue = input.value.trim();
+      if (trimmedValue === '') {
+        input.classList.add('error');
+        input.setCustomValidity('Display Name is required and cannot be empty');
+      } else {
+        input.classList.remove('error');
+        input.setCustomValidity('');
+      }
+    }
+    
     onChange(input.value);
   });
-  input.addEventListener('blur', () => setEditingState(false));
+  input.addEventListener('blur', () => {
+    setEditingState(false);
+    
+    // Final validation on blur
+    if (config.required && config.key === 'aliasName') {
+      const trimmedValue = input.value.trim();
+      if (trimmedValue === '') {
+        input.classList.add('error');
+        // Restore original value if empty
+        const state = store.getState();
+        if (state.originalConfig && state.originalConfig.aliasName) {
+          input.value = state.originalConfig.aliasName;
+          onChange(state.originalConfig.aliasName);
+          input.classList.remove('error');
+        }
+      }
+    }
+  });
+  
+  // Initial validation for required fields
+  if (config.required && config.key === 'aliasName') {
+    const trimmedValue = (value || '').trim();
+    if (trimmedValue === '') {
+      input.classList.add('error');
+    }
+  }
   
   return input;
 }

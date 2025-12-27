@@ -92,7 +92,6 @@ function renderPublisherList(publishers: PublisherEntry[], selectedId: string | 
   }
 
   for (const publisher of filtered) {
-    // We'll need the config to know active status - for now show as unknown
     const item = h('div', { 
       className: `publisher-item ${publisher.id === selectedId ? 'active' : ''}`,
       'data-id': publisher.id,
@@ -336,12 +335,34 @@ async function handleSave(): Promise<void> {
   
   if (!state.workingConfig || !publisher) return;
   
+  // Validate Display Name is not empty
+  const displayName = state.workingConfig.aliasName?.trim();
+  if (!displayName) {
+    showToast('error', 'Display Name is required and cannot be empty');
+    // Focus the Display Name field
+    const displayNameInput = document.querySelector('input[placeholder="e.g., Aurora Media"]') as HTMLInputElement;
+    if (displayNameInput) {
+      displayNameInput.focus();
+      displayNameInput.classList.add('error');
+    }
+    return;
+  }
+  
   setSaving(true);
   
   const response = await api.savePublisherConfig(publisher.file, state.workingConfig);
   
   if (response.success) {
-    setSaveSuccess();
+    // Update the publishers list with the new alias name
+    const updatedPublishers = state.publishers.map(pub => 
+      pub.id === publisher.id 
+        ? { ...pub, alias: state.workingConfig!.aliasName }
+        : pub
+    );
+    setPublishers(updatedPublishers);
+    
+    // Update both original and working config to the saved state
+    setConfig(state.workingConfig);
     showToast('success', 'Configuration saved successfully');
   } else {
     setSaveError(response.error || 'Failed to save configuration');
