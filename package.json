@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --ext .ts",
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
-    "build": "tsc"
+    "dev": "npm run build:client && tsx watch src/server.ts",
+    "start": "npm run build:client && tsx src/server.ts",
+    "build": "tsc",
+    "build:client": "tsc --project tsconfig.client.json"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

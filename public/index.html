@@ -4,13 +4,131 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="DeeperDive Publisher Config Tool" />
-    <meta name="theme-color" content="#004080" />
+    <meta name="description" content="DeeperDive Publisher Config Tool - Visual configuration editor for Taboola Support engineers" />
+    <meta name="theme-color" content="#1a1f2e" />
     <title>DeeperDive Config Tool</title>
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>" />
+    <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
+    <!-- App Shell -->
+    <div id="app" class="app">
+      
+      <!-- Header -->
+      <header class="header">
+        <div class="header__brand">
+          <span class="header__icon">⚙️</span>
+          <h1 class="header__title">DeeperDive Config Tool</h1>
+        </div>
+        <div class="header__status" id="header-status">
+          <!-- Status indicator populated by JS -->
+        </div>
+      </header>
 
+      <!-- Main Content Area -->
+      <main class="main">
+        
+        <!-- Sidebar: Publisher List -->
+        <aside class="sidebar" id="sidebar">
+          <div class="sidebar__header">
+            <h2 class="sidebar__title">Publishers</h2>
+            <input 
+              type="search" 
+              class="sidebar__search" 
+              id="publisher-search"
+              placeholder="Filter publishers..."
+              autocomplete="off"
+            />
+          </div>
+          <nav class="sidebar__list" id="publisher-list" role="navigation" aria-label="Publisher list">
+            <!-- Publisher items populated by JS -->
+            <div class="sidebar__loading" id="publisher-loading">
+              <span class="spinner"></span>
+              Loading publishers...
+            </div>
+          </nav>
+        </aside>
+
+        <!-- Content: Editor + Preview -->
+        <div class="content">
+          
+          <!-- Empty State -->
+          <div class="empty-state" id="empty-state">
+            <div class="empty-state__icon">📋</div>
+            <h2 class="empty-state__title">Select a Publisher</h2>
+            <p class="empty-state__text">Choose a publisher from the sidebar to view and edit their configuration.</p>
+          </div>
+
+          <!-- Loading State -->
+          <div class="loading-state hidden" id="loading-state">
+            <span class="spinner spinner--large"></span>
+            <p>Loading configuration...</p>
+          </div>
+
+          <!-- Error State -->
+          <div class="error-state hidden" id="error-state">
+            <div class="error-state__icon">⚠️</div>
+            <h2 class="error-state__title">Error Loading Config</h2>
+            <p class="error-state__text" id="error-message"></p>
+            <button class="btn btn--secondary" id="error-retry">Try Again</button>
+          </div>
+
+          <!-- Editor Panel -->
+          <section class="editor hidden" id="editor-panel">
+            <div class="editor__header">
+              <h2 class="editor__title" id="editor-title">Publisher Configuration</h2>
+              <div class="editor__actions">
+                <span class="editor__dirty-indicator hidden" id="dirty-indicator">
+                  <span class="dot dot--warning"></span>
+                  Unsaved changes
+                </span>
+              </div>
+            </div>
+            <form class="editor__form" id="config-form">
+              <!-- Form fields populated by JS -->
+            </form>
+          </section>
+
+          <!-- Preview Panel -->
+          <aside class="preview hidden" id="preview-panel">
+            <div class="preview__header">
+              <h3 class="preview__title">JSON Preview</h3>
+              <div class="preview__actions">
+                <button type="button" class="btn btn--icon" id="copy-json" title="Copy JSON">
+                  📋
+                </button>
+              </div>
+            </div>
+            <pre class="preview__code" id="preview-code"><code id="preview-content"></code></pre>
+          </aside>
+
+        </div>
+      </main>
+
+      <!-- Footer Action Bar -->
+      <footer class="action-bar hidden" id="action-bar">
+        <div class="action-bar__info">
+          <span id="last-save-time"></span>
+        </div>
+        <div class="action-bar__buttons">
+          <button type="button" class="btn btn--secondary" id="btn-reset" disabled>
+            Reset Changes
+          </button>
+          <button type="button" class="btn btn--secondary" id="btn-export">
+            Export JSON
+          </button>
+          <button type="button" class="btn btn--primary" id="btn-save" disabled>
+            Save Configuration
+          </button>
+        </div>
+      </footer>
+
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+    <!-- Main Application Script -->
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
-
