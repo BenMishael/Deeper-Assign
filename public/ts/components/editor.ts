@@ -67,7 +67,7 @@ const FIELD_CONFIGS: FieldConfig[] = [
   { key: 'pages', label: 'Page Configurations', type: 'array-object', section: 'Configuration' },
   { key: 'customCss', label: 'Custom CSS', type: 'textarea', section: 'Configuration', placeholder: '/* Add custom styles here */', hint: 'Optional CSS overrides' },
   
-  // Optional Fields Section
+  // Optional Fields Section (known fields)
   { key: 'tags', label: 'Tags', type: 'array-string', section: 'Optional Settings', hint: 'e.g., tech, finance' },
   { key: 'allowedDomains', label: 'Allowed Domains', type: 'array-string', section: 'Optional Settings', hint: 'Whitelist domains' },
   { key: 'contactEmail', label: 'Contact Email', type: 'text', section: 'Optional Settings', placeholder: 'support@example.com' },
@@ -75,6 +75,86 @@ const FIELD_CONFIGS: FieldConfig[] = [
   { key: 'notes', label: 'Notes', type: 'textarea', section: 'Optional Settings', placeholder: 'Additional information...' },
   { key: 'lastUpdated', label: 'Last Updated', type: 'readonly', section: 'Optional Settings' },
 ];
+
+/**
+ * Infer field type from value
+ */
+function inferFieldType(key: string, value: any): FieldConfig['type'] {
+  if (value === null || value === undefined) {
+    return 'text'; // Default to text for unknown types
+  }
+  
+  if (typeof value === 'boolean') {
+    return 'boolean';
+  }
+  
+  if (typeof value === 'number') {
+    return 'text'; // Numbers as text inputs
+  }
+  
+  if (Array.isArray(value)) {
+    if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+      return 'array-object';
+    }
+    return 'array-string';
+  }
+  
+  if (typeof value === 'string') {
+    // Check if it looks like a URL
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return 'url';
+    }
+    // Check if it's a long string (likely textarea)
+    if (value.length > 100 || value.includes('\n')) {
+      return 'textarea';
+    }
+    return 'text';
+  }
+  
+  if (typeof value === 'object') {
+    return 'array-object'; // Nested objects treated as object arrays
+  }
+  
+  return 'text';
+}
+
+/**
+ * Generate a human-readable label from a key
+ */
+function generateLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+/**
+ * Detect dynamic fields from config that aren't in FIELD_CONFIGS
+ */
+function detectDynamicFields(config: PublisherConfig): FieldConfig[] {
+  const knownKeys = new Set(FIELD_CONFIGS.map(f => f.key));
+  const dynamicFields: FieldConfig[] = [];
+  
+  for (const [key, value] of Object.entries(config)) {
+    // Skip known fields and null/undefined values
+    if (knownKeys.has(key) || value === null || value === undefined) {
+      continue;
+    }
+    
+    const type = inferFieldType(key, value);
+    const label = generateLabel(key);
+    
+    dynamicFields.push({
+      key,
+      label,
+      type,
+      section: 'Optional Settings',
+      required: false,
+    });
+  }
+  
+  return dynamicFields;
+}
 
 // ============================================================================
 // Field Renderers
@@ -441,6 +521,134 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
   return container;
 }
 
+/**
+ * Render a generic object array field (for dynamic fields)
+ */
+function renderGenericObjectArrayField(config: FieldConfig, value: any[] | undefined, onChange: (value: any[]) => void): HTMLElement {
+  const container = h('div', { className: 'array-field' });
+  const items = value || [];
+  
+  const header = h('div', { className: 'array-field__header' },
+    h('span', { className: 'array-field__title' }, `${items.length} item${items.length !== 1 ? 's' : ''}`),
+    h('button', { 
+      type: 'button',
+      className: 'btn btn--small btn--primary',
+    }, '+ Add')
+  );
+  
+  const itemsContainer = h('div', { className: 'array-field__items' });
+  
+  const render = () => {
+    clearChildren(itemsContainer);
+    
+    if (items.length === 0) {
+      itemsContainer.appendChild(
+        h('div', { className: 'array-field__empty' }, `No items yet. Click "Add" to create one.`)
+      );
+    } else {
+      items.forEach((item, index) => {
+        const itemEl = h('div', { className: 'object-array__item' },
+          h('div', { className: 'object-array__item-header' },
+            h('span', { className: 'object-array__item-title' }, `${config.label} ${index + 1}`),
+            h('button', {
+              type: 'button',
+              className: 'btn btn--icon',
+              title: 'Remove',
+            }, '✕')
+          ),
+          h('div', { className: 'object-array__fields' })
+        );
+        
+        const fieldsContainer = itemEl.querySelector('.object-array__fields') as HTMLElement;
+        const removeBtn = itemEl.querySelector('button') as HTMLButtonElement;
+        
+        // Dynamically render fields for each property in the object
+        const keys = Object.keys(item);
+        keys.forEach(key => {
+          const fieldValue = item[key];
+          const fieldGroup = h('div', { className: 'form-group' },
+            h('label', { className: 'form-group__label' }, generateLabel(key))
+          );
+          
+          let input: HTMLInputElement | HTMLTextAreaElement;
+          
+          if (typeof fieldValue === 'boolean') {
+            // Boolean toggle
+            const toggleContainer = renderBooleanField(
+              { key, label: '', type: 'boolean' },
+              fieldValue,
+              (newVal) => {
+                items[index] = { ...items[index], [key]: newVal };
+                onChange([...items]);
+              }
+            );
+            fieldGroup.appendChild(toggleContainer);
+          } else if (typeof fieldValue === 'string' && fieldValue.length > 100) {
+            // Textarea for long strings
+            input = h('textarea', {
+              className: 'form-textarea',
+              value: fieldValue || '',
+            }) as HTMLTextAreaElement;
+            input.addEventListener('input', () => {
+              setEditingState(true);
+              items[index] = { ...items[index], [key]: input.value };
+              onChange([...items]);
+            });
+            fieldGroup.appendChild(input);
+          } else {
+            // Regular text input
+            input = h('input', {
+              type: 'text',
+              className: 'form-input',
+              value: String(fieldValue || ''),
+            }) as HTMLInputElement;
+            input.addEventListener('input', () => {
+              setEditingState(true);
+              items[index] = { ...items[index], [key]: input.value };
+              onChange([...items]);
+            });
+            fieldGroup.appendChild(input);
+          }
+          
+          fieldsContainer.appendChild(fieldGroup);
+        });
+        
+        removeBtn.addEventListener('click', () => {
+          setEditingState(true);
+          items.splice(index, 1);
+          onChange([...items]);
+          render();
+        });
+        
+        itemsContainer.appendChild(itemEl);
+      });
+    }
+    
+    // Update header count
+    const title = header.querySelector('.array-field__title') as HTMLElement;
+    title.textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+  };
+  
+  const addBtn = header.querySelector('button') as HTMLButtonElement;
+  addBtn.addEventListener('click', () => {
+    setEditingState(true);
+    // Create a new item with default structure based on first item or empty object
+    const newItem = items.length > 0 
+      ? Object.keys(items[0]).reduce((acc, key) => ({ ...acc, [key]: '' }), {} as any)
+      : {};
+    items.push(newItem);
+    onChange([...items]);
+    render();
+  });
+  
+  render();
+  
+  container.appendChild(header);
+  container.appendChild(itemsContainer);
+  
+  return container;
+}
+
 // ============================================================================
 // Main Editor Renderer
 // ============================================================================
@@ -452,10 +660,16 @@ export function renderEditor(config: PublisherConfig): HTMLElement {
   const form = document.getElementById('config-form') as HTMLFormElement;
   clearChildren(form);
   
+  // Detect dynamic fields from config
+  const dynamicFields = detectDynamicFields(config);
+  
+  // Combine static and dynamic field configs
+  const allFieldConfigs = [...FIELD_CONFIGS, ...dynamicFields];
+  
   // Group fields by section
   const sections = new Map<string, FieldConfig[]>();
   
-  FIELD_CONFIGS.forEach(fieldConfig => {
+  allFieldConfigs.forEach(fieldConfig => {
     const section = fieldConfig.section || 'General';
     if (!sections.has(section)) {
       sections.set(section, []);
@@ -472,13 +686,13 @@ export function renderEditor(config: PublisherConfig): HTMLElement {
     fields.forEach(fieldConfig => {
       const value = (config as any)[fieldConfig.key];
       
-      // Skip fields that don't exist in this config (optional fields)
-      if (value === undefined && fieldConfig.key !== 'pages' && !fieldConfig.required) {
-        // Only render if it's a known optional field that might be added
-        if (!['tags', 'allowedDomains', 'contactEmail', 'defaultLanguage', 'notes', 'lastUpdated'].includes(fieldConfig.key)) {
-          return;
-        }
+      // Skip required fields that don't exist (shouldn't happen, but safety check)
+      if (value === undefined && fieldConfig.required) {
+        return;
       }
+      
+      // For optional fields, render them if they exist or if they're in the known optional list
+      // Dynamic fields are always rendered if they exist in config
       
       const formGroup = h('div', { className: 'form-group' },
         h('label', { 
@@ -511,7 +725,12 @@ export function renderEditor(config: PublisherConfig): HTMLElement {
           fieldEl = renderStringArrayField(fieldConfig, value as string[], onChange);
           break;
         case 'array-object':
-          fieldEl = renderPageArrayField(fieldConfig, value as PageConfig[], onChange);
+          // Use page-specific renderer for 'pages' field, generic for others
+          if (fieldConfig.key === 'pages') {
+            fieldEl = renderPageArrayField(fieldConfig, value as PageConfig[], onChange);
+          } else {
+            fieldEl = renderGenericObjectArrayField(fieldConfig, value as any[], onChange);
+          }
           break;
         case 'readonly':
         case 'text':

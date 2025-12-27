@@ -35,3 +35,8 @@ coverage/
 # Misc
 *.local
 
+# Backup files
+*.backup
+*.bak
+data/**/*.backup
+

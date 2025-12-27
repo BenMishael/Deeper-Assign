@@ -30,6 +30,16 @@ import { renderEditor, clearEditingState } from './components/editor.js';
 // DOM References
 // ============================================================================
 
+// Helper function to get header element
+function getHeader(): HTMLElement | null {
+  return document.querySelector('.header');
+}
+
+// Minimum loading animation duration (ms)
+const MIN_LOADING_DURATION = 300;
+let loadingStartTime = 0;
+let loadingTimeout: number | null = null;
+
 const elements = {
   // Sidebar
   publisherList: $id('publisher-list')!,
@@ -200,17 +210,48 @@ function handleStateChange(state: AppState, changedKeys: (keyof AppState)[]): vo
   
   // Loading publishers
   if (changedKeys.includes('isLoadingPublishers')) {
+    const header = getHeader();
     if (state.isLoadingPublishers) {
       show(elements.publisherLoading);
+      loadingStartTime = Date.now();
+      if (header) {
+        header.classList.add('loading');
+        console.log('✅ Added loading class to header (publishers)');
+      }
+      // Clear any existing timeout
+      if (loadingTimeout !== null) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+      }
     } else {
       hide(elements.publisherLoading);
+      // Only remove loading class if config is not loading
+      if (!state.isLoadingConfig) {
+        removeLoadingWithDelay(header);
+      }
     }
   }
   
   // Config loading state
   if (changedKeys.includes('isLoadingConfig')) {
+    const header = getHeader();
     if (state.isLoadingConfig) {
       showContentState('loading');
+      loadingStartTime = Date.now();
+      if (header) {
+        header.classList.add('loading');
+        console.log('✅ Added loading class to header (config)');
+      }
+      // Clear any existing timeout
+      if (loadingTimeout !== null) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+      }
+    } else {
+      // Only remove loading class if publishers are not loading
+      if (!state.isLoadingPublishers) {
+        removeLoadingWithDelay(header);
+      }
     }
   }
   
@@ -253,6 +294,25 @@ function handleStateChange(state: AppState, changedKeys: (keyof AppState)[]): vo
       const timeStr = state.lastSaveTime.toLocaleTimeString();
       elements.lastSaveTime.textContent = `Last saved at ${timeStr}`;
     }
+  }
+}
+
+/**
+ * Remove loading class with minimum duration
+ */
+function removeLoadingWithDelay(header: HTMLElement | null): void {
+  if (!header) return;
+  
+  const elapsed = Date.now() - loadingStartTime;
+  const remaining = Math.max(0, MIN_LOADING_DURATION - elapsed);
+  
+  if (remaining > 0) {
+    loadingTimeout = window.setTimeout(() => {
+      header.classList.remove('loading');
+      loadingTimeout = null;
+    }, remaining);
+  } else {
+    header.classList.remove('loading');
   }
 }
 
@@ -493,8 +553,21 @@ async function init(): Promise<void> {
   // Set up event listeners
   setupEventListeners();
   
+  // Add loading class on initial load
+  const header = getHeader();
+  if (header) {
+    loadingStartTime = Date.now();
+    header.classList.add('loading');
+    console.log('✅ Added loading class to header (initial load)');
+  }
+  
   // Load initial data
   await loadPublishers();
+  
+  // Remove loading class after initial load completes (with delay)
+  if (header) {
+    removeLoadingWithDelay(header);
+  }
   
   console.log('✅ DeeperDive Config Tool ready');
 }

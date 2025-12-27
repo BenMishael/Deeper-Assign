@@ -192,6 +192,37 @@ body {
   color: var(--color-text-secondary);
 }
 
+/* Loading animations for logo and title */
+.header.loading .header__icon {
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+.header.loading .header__title {
+  animation: titleShimmer 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes titleShimmer {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.7;
+    filter: brightness(1.2);
+  }
+}
+
 /* ============================================================================
    Main Layout
    ============================================================================ */
