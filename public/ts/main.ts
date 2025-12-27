@@ -298,6 +298,12 @@ function updateDirtyState(): void {
  * Handle publisher selection
  */
 async function handlePublisherSelect(publisherId: string, filename: string): Promise<void> {
+  // Prevent re-rendering if clicking on the already selected publisher
+  const state = store.getState();
+  if (state.selectedPublisherId === publisherId) {
+    return;
+  }
+  
   // Clear editing state to re-enable animations for the new publisher
   clearEditingState();
   
