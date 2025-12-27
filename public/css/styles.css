@@ -168,7 +168,10 @@ body {
 }
 
 .header__icon {
-  font-size: var(--text-xl);
+  height: 32px;
+  width: auto;
+  display: block;
+  color: #f1f5f9;
 }
 
 .header__title {
