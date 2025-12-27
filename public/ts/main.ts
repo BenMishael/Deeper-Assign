@@ -16,9 +16,15 @@ import {
   setConfig,
   setConfigError,
   getSelectedPublisher,
+  setSaving,
+  setSaveSuccess,
+  setSaveError,
+  resetWorkingConfig,
+  hasUnsavedChanges,
 } from './state.js';
 import type { PublisherEntry, AppState } from './types.js';
 import { $id, clearChildren, h, show, hide, on } from './utils/dom.js';
+import { renderEditor } from './components/editor.js';
 
 // ============================================================================
 // DOM References
@@ -196,11 +202,25 @@ function handleStateChange(state: AppState, changedKeys: (keyof AppState)[]): vo
       showContentState('error');
     } else if (state.workingConfig) {
       showContentState('editor');
-      // Editor component will handle form rendering
       updateEditorTitle(state.workingConfig.aliasName);
+      renderEditor(state.workingConfig);
       updatePreview(state.workingConfig);
+      updateDirtyState();
     } else if (!state.selectedPublisherId) {
       showContentState('empty');
+    }
+  }
+  
+  // Dirty state changed
+  if (changedKeys.includes('workingConfig') || changedKeys.includes('originalConfig')) {
+    updateDirtyState();
+  }
+  
+  // Save state changed
+  if (changedKeys.includes('lastSaveTime')) {
+    if (state.lastSaveTime) {
+      const timeStr = state.lastSaveTime.toLocaleTimeString();
+      elements.lastSaveTime.textContent = `Last saved at ${timeStr}`;
     }
   }
 }
@@ -226,6 +246,17 @@ function updatePreview(config: object): void {
     .replace(/: (null)/g, ': <span class="json-null">$1</span>');
   
   elements.previewContent.innerHTML = highlighted;
+}
+
+/**
+ * Update dirty state indicators
+ */
+function updateDirtyState(): void {
+  const isDirty = hasUnsavedChanges();
+  
+  elements.dirtyIndicator.classList.toggle('hidden', !isDirty);
+  elements.btnSave.disabled = !isDirty;
+  elements.btnReset.disabled = !isDirty;
 }
 
 // ============================================================================
@@ -278,6 +309,45 @@ function handleRetry(): void {
   const publisher = getSelectedPublisher();
   if (publisher) {
     handlePublisherSelect(publisher.id, publisher.file);
+  }
+}
+
+/**
+ * Handle save configuration
+ */
+async function handleSave(): Promise<void> {
+  const state = store.getState();
+  const publisher = getSelectedPublisher();
+  
+  if (!state.workingConfig || !publisher) return;
+  
+  setSaving(true);
+  
+  const response = await api.savePublisherConfig(publisher.file, state.workingConfig);
+  
+  if (response.success) {
+    setSaveSuccess();
+    showToast('success', 'Configuration saved successfully');
+  } else {
+    setSaveError(response.error || 'Failed to save configuration');
+    showToast('error', response.error || 'Failed to save configuration');
+  }
+}
+
+/**
+ * Handle reset changes
+ */
+function handleReset(): void {
+  if (!hasUnsavedChanges()) return;
+  
+  if (confirm('Are you sure you want to discard all changes?')) {
+    resetWorkingConfig();
+    const state = store.getState();
+    if (state.workingConfig) {
+      renderEditor(state.workingConfig);
+      updatePreview(state.workingConfig);
+    }
+    showToast('info', 'Changes discarded');
   }
 }
 
@@ -341,6 +411,12 @@ function setupEventListeners(): void {
       showToast('success', 'Configuration exported');
     }
   });
+  
+  // Save button
+  on(elements.btnSave, 'click', handleSave);
+  
+  // Reset button
+  on(elements.btnReset, 'click', handleReset);
 }
 
 /**
