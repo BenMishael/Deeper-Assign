@@ -6,12 +6,12 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist",
     "forceConsistentCasingInFileNames": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "declaration": false,
-    "noEmit": false
+    "outDir": "public/js",
+    "rootDir": "public/ts"
   },
-  "include": ["src/**/*", "public/ts/**/*"]
+  "include": ["public/ts/**/*"]
 }
 

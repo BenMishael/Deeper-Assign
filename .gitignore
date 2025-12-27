@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+public/js/
 
 # TypeScript
 *.tsbuildinfo
@@ -33,4 +34,9 @@ coverage/
 
 # Misc
 *.local
+
+# Backup files
+*.backup
+*.bak
+data/**/*.backup
 
