@@ -11,13 +11,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001; // API server on port 3001
 const DATA_DIR = path.join(__dirname, "../data");
 
 // Middleware
 app.use(express.json({ limit: "10mb" })); // Limit JSON payload size
-app.use(express.static(path.join(__dirname, "../public")));
+// Note: Static files are served by a separate server on port 3000
 app.use(requestLogger);
+
+// CORS middleware to allow requests from client on port 3000
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Health check endpoint
 app.get("/api/health", (_req: Request, res: Response<HealthCheckResponse>) => {
@@ -154,7 +165,8 @@ app.use((err: Error, _req: Request, res: Response<ApiError>, _next: NextFunction
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🚀 API Server running at http://localhost:${PORT}`);
   console.log(`📁 Data directory: ${DATA_DIR}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🌐 Client should connect to: http://localhost:3000`);
 });

@@ -16,7 +16,14 @@ import type {
 // Configuration
 // ============================================================================
 
-const API_BASE = '/api';
+// API server runs on port 3001, client on port 3000
+// Detect if we're in development (localhost) or production
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const API_BASE = isDevelopment 
+  ? 'http://localhost:3001/api'  // Development: separate ports
+  : '/api';  // Production: API might be proxied or same origin
 
 // ============================================================================
 // Generic Fetch Wrapper
