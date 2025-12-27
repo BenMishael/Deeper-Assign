@@ -16,7 +16,8 @@ A modern, web-based configuration management tool designed to help support engin
 ## 🎬 Video
 Check out the demo video to see **DeeperDive Publisher Config Tool** in action:
 
-https://github.com/BenMishael/Deeper-Assign/blob/workbranch/media/video.mp4
+https://github.com/user-attachments/assets/9c414ae3-4f94-4c7f-a3bd-10a1f288b779
+
 
 ## 🎯 Overview
 
