@@ -1,0 +1,18 @@
+{
+  "publisherId": "test-001",
+  "aliasName": "Test Publisher Alpha",
+  "isActive": true,
+  "pages": [
+    {
+      "pageType": "homepage",
+      "selector": "#main-content",
+      "position": "top"
+    }
+  ],
+  "publisherDashboard": "https://dashboard.test.com/alpha",
+  "monitorDashboard": "https://monitor.test.com/alpha",
+  "qaStatusDashboard": "https://qa.test.com/alpha",
+  "tags": ["test", "alpha"],
+  "notes": "Test publisher for integration tests"
+}
+

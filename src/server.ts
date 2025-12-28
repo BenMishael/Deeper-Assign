@@ -164,9 +164,17 @@ app.use((err: Error, _req: Request, res: Response<ApiError>, _next: NextFunction
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 API Server running at http://localhost:${PORT}`);
-  console.log(`📁 Data directory: ${DATA_DIR}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Client should connect to: http://localhost:3000`);
-});
+// Export app for testing
+export { app, DATA_DIR };
+
+// Only start server if this file is run directly (not imported for tests)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
+  app.listen(PORT, () => {
+    console.log(`🚀 API Server running at http://localhost:${PORT}`);
+    console.log(`📁 Data directory: ${DATA_DIR}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Client should connect to: http://localhost:3000`);
+  });
+}

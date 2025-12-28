@@ -1,0 +1,15 @@
+{
+  "publishers": [
+    {
+      "id": "test-001",
+      "alias": "Test Publisher Alpha",
+      "file": "test-publisher-alpha.json"
+    },
+    {
+      "id": "test-002",
+      "alias": "Test Publisher Beta",
+      "file": "test-publisher-beta.json"
+    }
+  ]
+}
+
