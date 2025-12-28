@@ -6,6 +6,8 @@ import type { PublisherConfig, PublishersResponse, ApiError, ApiSuccess, HealthC
 import { validateFilename, validatePublisherConfig } from "./utils/validation.js";
 import { createBackup, readJsonFile, writeJsonFile, fileExists } from "./utils/fileOperations.js";
 import { requestLogger } from "./middleware/logger.js";
+import { logger, errorMessages } from "./utils/logger.js";
+import { FILE_LIMITS } from "./utils/constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +17,7 @@ const PORT = process.env.PORT || 3001; // API server on port 3001
 const DATA_DIR = path.join(__dirname, "../data");
 
 // Middleware
-app.use(express.json({ limit: "10mb" })); // Limit JSON payload size
+app.use(express.json({ limit: FILE_LIMITS.MAX_JSON_PAYLOAD })); // Limit JSON payload size
 // Note: Static files are served by a separate server on port 3000
 app.use(requestLogger);
 
@@ -45,15 +47,15 @@ app.get("/api/publishers", async (_req: Request, res: Response<PublishersRespons
     const dataPath = path.join(DATA_DIR, "publishers.json");
     
     if (!fileExists(dataPath)) {
-      return res.status(404).json({ error: "Publishers file not found" });
+      return res.status(404).json({ error: errorMessages.notFound("Publishers file") });
     }
 
     const data = await readJsonFile<PublishersResponse>(dataPath);
     res.json(data);
   } catch (error) {
-    console.error("Error reading publishers:", error);
+    logger.error("Failed to read publishers", error);
     res.status(500).json({ 
-      error: "Failed to read publishers data",
+      error: errorMessages.fileRead("publishers.json"),
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
@@ -67,7 +69,7 @@ app.get("/api/publisher/:filename", async (req: Request, res: Response<Publisher
     // Validate filename
     if (!validateFilename(filename)) {
       return res.status(400).json({ 
-        error: "Invalid filename format. Filename must be alphanumeric with .json extension" 
+        error: errorMessages.validation("filename format")
       });
     }
 
@@ -75,24 +77,24 @@ app.get("/api/publisher/:filename", async (req: Request, res: Response<Publisher
 
     if (!fileExists(dataPath)) {
       return res.status(404).json({ 
-        error: `Publisher config "${filename}" not found` 
+        error: errorMessages.notFound(`Publisher config "${filename}"`)
       });
     }
 
     const data = await readJsonFile<PublisherConfig>(dataPath);
     res.json(data);
   } catch (error) {
-    console.error(`Error reading publisher config ${req.params.filename}:`, error);
+    logger.error(`Failed to read publisher config: ${req.params.filename}`, error);
     
     if (error instanceof Error && error.message.includes("Invalid JSON")) {
       return res.status(500).json({ 
-        error: "Invalid JSON in publisher config file",
+        error: errorMessages.invalidJson(),
         details: error.message
       });
     }
 
     res.status(500).json({ 
-      error: "Failed to read publisher config",
+      error: errorMessages.fileRead(req.params.filename),
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
@@ -106,14 +108,22 @@ app.put("/api/publisher/:filename", async (req: Request, res: Response<ApiSucces
     // Validate filename
     if (!validateFilename(filename)) {
       return res.status(400).json({ 
-        error: "Invalid filename format. Filename must be alphanumeric with .json extension" 
+        error: errorMessages.validation("filename format")
       });
     }
 
     // Validate request body
     if (!req.body || typeof req.body !== "object") {
       return res.status(400).json({ 
-        error: "Invalid request: body must be a valid JSON object" 
+        error: errorMessages.validation("request body must be a valid JSON object")
+      });
+    }
+
+    // Check payload size
+    const payloadSize = JSON.stringify(req.body).length;
+    if (payloadSize > FILE_LIMITS.MAX_CONFIG_SIZE_BYTES) {
+      return res.status(413).json({
+        error: `Config too large (${Math.round(payloadSize / 1024)}KB). Maximum size is ${Math.round(FILE_LIMITS.MAX_CONFIG_SIZE_BYTES / 1024)}KB`
       });
     }
 
@@ -121,7 +131,7 @@ app.put("/api/publisher/:filename", async (req: Request, res: Response<ApiSucces
     const validation = validatePublisherConfig(req.body);
     if (!validation.valid) {
       return res.status(400).json({ 
-        error: validation.error || "Invalid publisher config structure"
+        error: validation.error || errorMessages.validation("publisher config structure")
       });
     }
 
@@ -133,7 +143,7 @@ app.put("/api/publisher/:filename", async (req: Request, res: Response<ApiSucces
     // Write the file
     await writeJsonFile<PublisherConfig>(dataPath, req.body as PublisherConfig);
 
-    console.log(`✅ Successfully saved publisher config: ${filename}`);
+    logger.success(`Saved publisher config: ${filename}`);
 
     res.json({ 
       success: true,
@@ -141,10 +151,10 @@ app.put("/api/publisher/:filename", async (req: Request, res: Response<ApiSucces
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error(`❌ Error saving publisher config ${req.params.filename}:`, error);
+    logger.error(`Failed to save publisher config: ${req.params.filename}`, error);
     
     res.status(500).json({ 
-      error: "Failed to save publisher config",
+      error: errorMessages.fileWrite(req.params.filename),
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
@@ -157,9 +167,9 @@ app.use("/api/*", (_req: Request, res: Response<ApiError>) => {
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response<ApiError>, _next: NextFunction) => {
-  console.error("❌ Unhandled error:", err);
+  logger.error("Unhandled error", err);
   res.status(500).json({ 
-    error: "Internal server error",
+    error: errorMessages.serverError(),
     details: process.env.NODE_ENV === "development" ? err.message : undefined
   });
 });
@@ -172,9 +182,9 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
 if (isMainModule) {
   app.listen(PORT, () => {
-    console.log(`🚀 API Server running at http://localhost:${PORT}`);
-    console.log(`📁 Data directory: ${DATA_DIR}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🌐 Client should connect to: http://localhost:3000`);
+    logger.info(`API Server running at http://localhost:${PORT}`);
+    logger.info(`Data directory: ${DATA_DIR}`);
+    logger.info(`Health check: http://localhost:${PORT}/api/health`);
+    logger.info(`Client should connect to: http://localhost:3000`);
   });
 }

@@ -5,6 +5,7 @@
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { logger } from "./logger.js";
 
 /**
  * Create a backup of a file before modifying it
@@ -15,10 +16,10 @@ export async function createBackup(filePath: string): Promise<void> {
       const backupPath = `${filePath}.backup`;
       const content = await fs.readFile(filePath, "utf-8");
       await fs.writeFile(backupPath, content, "utf-8");
-      console.log(`✅ Backup created: ${path.basename(backupPath)}`);
+      logger.success(`Backup created: ${path.basename(backupPath)}`);
     }
   } catch (error) {
-    console.warn("⚠️  Failed to create backup:", error);
+    logger.warn("Failed to create backup", error);
     // Don't throw - backup failure shouldn't prevent save
   }
 }

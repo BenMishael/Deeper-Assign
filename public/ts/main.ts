@@ -25,6 +25,7 @@ import {
 import type { PublisherEntry, AppState } from './types.js';
 import { $id, clearChildren, h, show, hide, on } from './utils/dom.js';
 import { renderEditor, clearEditingState } from './components/editor.js';
+import { UI_TIMING } from './utils/constants.js';
 
 // ============================================================================
 // DOM References
@@ -36,7 +37,7 @@ function getHeader(): HTMLElement | null {
 }
 
 // Minimum loading animation duration (ms)
-const MIN_LOADING_DURATION = 300;
+const MIN_LOADING_DURATION = UI_TIMING.MIN_LOADING_DURATION_MS;
 let loadingStartTime = 0;
 let loadingTimeout: number | null = null;
 
@@ -167,7 +168,7 @@ function showContentState(state: 'empty' | 'loading' | 'error' | 'editor'): void
 /**
  * Show a toast notification
  */
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string, duration = 4000): void {
+function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string, duration = UI_TIMING.TOAST_DEFAULT_DURATION_MS): void {
   const icons = {
     success: '✓',
     error: '✕',
@@ -184,7 +185,7 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
   
   setTimeout(() => {
     toast.classList.add('toast-out');
-    setTimeout(() => toast.remove(), 300);
+    setTimeout(() => toast.remove(), UI_TIMING.TOAST_FADEOUT_MS);
   }, duration);
 }
 

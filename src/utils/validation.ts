@@ -3,15 +3,13 @@
  */
 
 import type { PublisherConfig, ValidationResult, PageConfig } from '../types.js';
+import { VALIDATION_PATTERNS } from './constants.js';
 
 /**
  * Validate filename to prevent path traversal attacks
  */
 export function validateFilename(filename: string): boolean {
-  // Only allow alphanumeric, hyphens, underscores, and dots
-  // Must end with .json
-  const validPattern = /^[a-zA-Z0-9_-]+\.json$/;
-  return validPattern.test(filename);
+  return VALIDATION_PATTERNS.FILENAME.test(filename);
 }
 
 /**

@@ -2,7 +2,7 @@
  * DeeperDive Publisher Config Tool - API Client
  * 
  * Handles all HTTP communication with the Express server.
- * Provides typed wrappers around fetch with error handling.
+ * Provides typed wrappers around fetch with error handling and timeout support.
  */
 
 import type { 
@@ -11,6 +11,7 @@ import type {
   ApiResponse, 
   SaveResponse 
 } from './types.js';
+import { API_CONFIG } from './utils/constants.js';
 
 // ============================================================================
 // Configuration
@@ -30,12 +31,16 @@ const API_BASE = isDevelopment
 // ============================================================================
 
 /**
- * Generic fetch wrapper with error handling
+ * Generic fetch wrapper with error handling and timeout support
  */
 async function fetchJson<T>(
   url: string, 
-  options?: RequestInit
+  options?: RequestInit,
+  timeoutMs = API_CONFIG.REQUEST_TIMEOUT_MS
 ): Promise<ApiResponse<T>> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
   try {
     const response = await fetch(url, {
       headers: {
@@ -43,7 +48,10 @@ async function fetchJson<T>(
         ...options?.headers,
       },
       ...options,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -56,8 +64,16 @@ async function fetchJson<T>(
     const data = await response.json();
     return { success: true, data };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Network error';
-    return { success: false, error: message };
+    clearTimeout(timeoutId);
+    
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') {
+        return { success: false, error: 'Request timeout - please try again' };
+      }
+      return { success: false, error: err.message };
+    }
+    
+    return { success: false, error: 'Network error' };
   }
 }
 

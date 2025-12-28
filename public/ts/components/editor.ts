@@ -8,6 +8,7 @@
 import type { PublisherConfig, PageConfig } from '../types.js';
 import { h, clearChildren } from '../utils/dom.js';
 import { store, updateWorkingConfig, hasUnsavedChanges } from '../state.js';
+import { FIELD_DETECTION, UI_TIMING } from '../utils/constants.js';
 
 // ============================================================================
 // State Management
@@ -105,7 +106,7 @@ function inferFieldType(key: string, value: any): FieldConfig['type'] {
       return 'url';
     }
     // Check if it's a long string (likely textarea)
-    if (value.length > 100 || value.includes('\n')) {
+    if (value.length > FIELD_DETECTION.TEXTAREA_THRESHOLD_CHARS || value.includes('\n')) {
       return 'textarea';
     }
     return 'text';
@@ -342,14 +343,17 @@ function renderStringArrayField(config: FieldConfig, value: string[] | undefined
         
         input.addEventListener('input', () => {
           setEditingState(true);
-          items[index] = input.value;
-          onChange([...items]);
+          // Immutable update: create new array with updated value
+          const updated = [...items];
+          updated[index] = input.value;
+          onChange(updated);
         });
         
         removeBtn.addEventListener('click', () => {
           setEditingState(true);
-          items.splice(index, 1);
-          onChange([...items]);
+          // Immutable update: create new array without removed item
+          const updated = items.filter((_, i) => i !== index);
+          onChange(updated);
           render();
         });
         
@@ -365,15 +369,16 @@ function renderStringArrayField(config: FieldConfig, value: string[] | undefined
   const addBtn = header.querySelector('button') as HTMLButtonElement;
   addBtn.addEventListener('click', () => {
     setEditingState(true);
-    items.push('');
-    onChange([...items]);
+    // Immutable update: create new array with added item
+    const updated = [...items, ''];
+    onChange(updated);
     render();
     // Focus the new input
     setTimeout(() => {
       const inputs = itemsContainer.querySelectorAll('input');
       const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
       lastInput?.focus();
-    }, 50);
+    }, UI_TIMING.INPUT_FOCUS_DELAY_MS);
   });
   
   render();
@@ -469,12 +474,14 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
         
         const updatePage = () => {
           setEditingState(true);
-          pages[index] = {
+          // Immutable update: create new array with updated page
+          const updated = [...pages];
+          updated[index] = {
             pageType: typeInput.value,
             selector: selectorInput.value,
             position: positionInput.value,
           };
-          onChange([...pages]);
+          onChange(updated);
           
           // Update title
           const title = pageEl.querySelector('.object-array__item-title') as HTMLElement;
@@ -487,8 +494,9 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
         
         removeBtn.addEventListener('click', () => {
           setEditingState(true);
-          pages.splice(index, 1);
-          onChange([...pages]);
+          // Immutable update: create new array without removed page
+          const updated = pages.filter((_, i) => i !== index);
+          onChange(updated);
           render();
         });
         
@@ -504,12 +512,13 @@ function renderPageArrayField(config: FieldConfig, value: PageConfig[] | undefin
   const addBtn = header.querySelector('button') as HTMLButtonElement;
   addBtn.addEventListener('click', () => {
     setEditingState(true);
-    pages.push({
+    // Immutable update: create new array with added page
+    const updated = [...pages, {
       pageType: '',
       selector: '',
       position: 'top',
-    });
-    onChange([...pages]);
+    }];
+    onChange(updated);
     render();
   });
   

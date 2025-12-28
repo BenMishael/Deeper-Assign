@@ -11,6 +11,7 @@ import type {
   PublisherEntry, 
   PublisherConfig 
 } from './types.js';
+import { deepEqual, deepClone } from './utils/equality.js';
 
 // ============================================================================
 // Initial State
@@ -170,8 +171,8 @@ export function setConfigLoading(): void {
  */
 export function setConfig(config: PublisherConfig): void {
   store.setState({
-    originalConfig: structuredClone(config),
-    workingConfig: structuredClone(config),
+    originalConfig: deepClone(config),
+    workingConfig: deepClone(config),
     isLoadingConfig: false,
     configError: null,
   });
@@ -203,7 +204,7 @@ export function resetWorkingConfig(): void {
   const { originalConfig } = store.getState();
   if (originalConfig) {
     store.setState({
-      workingConfig: structuredClone(originalConfig),
+      workingConfig: deepClone(originalConfig),
     });
   }
 }
@@ -228,7 +229,7 @@ export function setSaveSuccess(): void {
     saveError: null,
     lastSaveTime: new Date(),
     // Update original to match working after successful save
-    originalConfig: workingConfig ? structuredClone(workingConfig) : null,
+    originalConfig: workingConfig ? deepClone(workingConfig) : null,
   });
 }
 
@@ -248,11 +249,12 @@ export function setSaveError(error: string): void {
 
 /**
  * Check if there are unsaved changes
+ * Uses efficient deep equality instead of JSON.stringify
  */
 export function hasUnsavedChanges(): boolean {
   const { originalConfig, workingConfig } = store.getState();
   if (!originalConfig || !workingConfig) return false;
-  return JSON.stringify(originalConfig) !== JSON.stringify(workingConfig);
+  return !deepEqual(originalConfig, workingConfig);
 }
 
 /**
