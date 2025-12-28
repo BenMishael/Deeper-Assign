@@ -103,6 +103,124 @@ describe('deepEqual', () => {
       expect(deepEqual(config1, config2)).toBe(false);
     });
   });
+
+  describe('Date objects', () => {
+    it('should return true for Dates with same time', () => {
+      const date1 = new Date('2024-01-01T00:00:00.000Z');
+      const date2 = new Date('2024-01-01T00:00:00.000Z');
+      expect(deepEqual(date1, date2)).toBe(true);
+    });
+
+    it('should return false for Dates with different time', () => {
+      const date1 = new Date('2024-01-01T00:00:00.000Z');
+      const date2 = new Date('2024-01-02T00:00:00.000Z');
+      expect(deepEqual(date1, date2)).toBe(false);
+    });
+
+    it('should return false when comparing Date to non-Date', () => {
+      const date = new Date('2024-01-01T00:00:00.000Z');
+      const str = '2024-01-01T00:00:00.000Z';
+      const num = date.getTime();
+      
+      expect(deepEqual(date, str)).toBe(false);
+      expect(deepEqual(date, num)).toBe(false);
+      expect(deepEqual(date, {})).toBe(false);
+      expect(deepEqual(date, null)).toBe(false);
+    });
+
+    it('should handle Dates in nested structures', () => {
+      const obj1 = {
+        created: new Date('2024-01-01'),
+        nested: { updated: new Date('2024-01-02') }
+      };
+      const obj2 = {
+        created: new Date('2024-01-01'),
+        nested: { updated: new Date('2024-01-02') }
+      };
+      const obj3 = {
+        created: new Date('2024-01-01'),
+        nested: { updated: new Date('2024-01-03') }
+      };
+      
+      expect(deepEqual(obj1, obj2)).toBe(true);
+      expect(deepEqual(obj1, obj3)).toBe(false);
+    });
+  });
+
+  describe('NaN handling', () => {
+    it('should return true for NaN === NaN', () => {
+      expect(deepEqual(NaN, NaN)).toBe(true);
+    });
+
+    it('should return false when comparing NaN to non-NaN', () => {
+      expect(deepEqual(NaN, 0)).toBe(false);
+      expect(deepEqual(NaN, undefined)).toBe(false);
+      expect(deepEqual(NaN, null)).toBe(false);
+      expect(deepEqual(NaN, 'NaN')).toBe(false);
+    });
+
+    it('should handle NaN in arrays', () => {
+      expect(deepEqual([1, NaN, 3], [1, NaN, 3])).toBe(true);
+      expect(deepEqual([1, NaN, 3], [1, 0, 3])).toBe(false);
+    });
+
+    it('should handle NaN in objects', () => {
+      expect(deepEqual({ a: NaN }, { a: NaN })).toBe(true);
+      expect(deepEqual({ a: NaN }, { a: 0 })).toBe(false);
+    });
+  });
+
+  describe('circular references', () => {
+    it('should handle circular object references', () => {
+      const obj1: any = { a: 1 };
+      obj1.self = obj1;
+      
+      const obj2: any = { a: 1 };
+      obj2.self = obj2;
+      
+      expect(deepEqual(obj1, obj2)).toBe(true);
+    });
+
+    it('should handle circular array references', () => {
+      const arr1: any[] = [1, 2];
+      arr1.push(arr1);
+      
+      const arr2: any[] = [1, 2];
+      arr2.push(arr2);
+      
+      expect(deepEqual(arr1, arr2)).toBe(true);
+    });
+
+    it('should detect differences in circular structures', () => {
+      const obj1: any = { a: 1 };
+      obj1.self = obj1;
+      
+      const obj2: any = { a: 2 };
+      obj2.self = obj2;
+      
+      expect(deepEqual(obj1, obj2)).toBe(false);
+    });
+
+    it('should handle complex nested circular references', () => {
+      const obj1: any = { a: { b: 1 } };
+      obj1.a.parent = obj1;
+      
+      const obj2: any = { a: { b: 1 } };
+      obj2.a.parent = obj2;
+      
+      expect(deepEqual(obj1, obj2)).toBe(true);
+    });
+
+    it('should handle mixed circular references', () => {
+      const obj1: any = { arr: [1, 2] };
+      obj1.arr.push(obj1);
+      
+      const obj2: any = { arr: [1, 2] };
+      obj2.arr.push(obj2);
+      
+      expect(deepEqual(obj1, obj2)).toBe(true);
+    });
+  });
 });
 
 describe('deepClone', () => {
@@ -176,6 +294,101 @@ describe('deepClone', () => {
     // Mutations don't affect original
     cloned.pages[0].pageType = 'changed';
     expect(config.pages[0].pageType).toBe('home');
+  });
+
+  describe('circular references', () => {
+    it('should handle circular object references', () => {
+      const obj: any = { a: 1, b: 2 };
+      obj.self = obj;
+      
+      const cloned = deepClone(obj);
+      
+      expect(cloned.a).toBe(1);
+      expect(cloned.b).toBe(2);
+      expect(cloned.self).toBe(cloned); // Self-reference preserved
+      expect(cloned).not.toBe(obj); // Different object
+    });
+
+    it('should handle circular array references', () => {
+      const arr: any[] = [1, 2, 3];
+      arr.push(arr);
+      
+      const cloned = deepClone(arr);
+      
+      expect(cloned[0]).toBe(1);
+      expect(cloned[1]).toBe(2);
+      expect(cloned[2]).toBe(3);
+      expect(cloned[3]).toBe(cloned); // Self-reference preserved
+      expect(cloned).not.toBe(arr); // Different array
+    });
+
+    it('should handle complex nested circular references', () => {
+      const obj: any = {
+        name: 'root',
+        child: {
+          name: 'child',
+          parent: null as any
+        }
+      };
+      obj.child.parent = obj;
+      
+      const cloned = deepClone(obj);
+      
+      expect(cloned.name).toBe('root');
+      expect(cloned.child.name).toBe('child');
+      expect(cloned.child.parent).toBe(cloned); // Circular ref preserved
+      expect(cloned).not.toBe(obj);
+      expect(cloned.child).not.toBe(obj.child);
+    });
+
+    it('should handle multiple references to same object', () => {
+      const shared = { value: 42 };
+      const obj = {
+        ref1: shared,
+        ref2: shared,
+      };
+      
+      const cloned = deepClone(obj);
+      
+      expect(cloned.ref1).toBe(cloned.ref2); // Same reference preserved
+      expect(cloned.ref1).not.toBe(shared); // But cloned
+      expect(cloned.ref1.value).toBe(42);
+      
+      // Mutation affects both refs in clone
+      cloned.ref1.value = 100;
+      expect(cloned.ref2.value).toBe(100);
+      
+      // But not the original
+      expect(shared.value).toBe(42);
+    });
+  });
+
+  describe('Date cloning', () => {
+    it('should clone Date objects correctly', () => {
+      const date = new Date('2024-01-01T00:00:00.000Z');
+      const cloned = deepClone(date);
+      
+      expect(cloned).toBeInstanceOf(Date);
+      expect(cloned.getTime()).toBe(date.getTime());
+      expect(cloned).not.toBe(date);
+    });
+
+    it('should clone Dates in nested structures', () => {
+      const obj = {
+        created: new Date('2024-01-01'),
+        nested: {
+          updated: new Date('2024-01-02'),
+        },
+      };
+      
+      const cloned = deepClone(obj);
+      
+      expect(cloned.created).toBeInstanceOf(Date);
+      expect(cloned.nested.updated).toBeInstanceOf(Date);
+      expect(cloned.created).not.toBe(obj.created);
+      expect(cloned.nested.updated).not.toBe(obj.nested.updated);
+      expect(cloned.created.getTime()).toBe(obj.created.getTime());
+    });
   });
 });
 
