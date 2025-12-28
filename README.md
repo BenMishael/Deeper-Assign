@@ -57,7 +57,7 @@ This tool provides a **safe, visual, and intuitive** solution that protects user
 - **📝 Request Logging**: Comprehensive server-side logging with environment-aware behavior
 - **💾 Automatic Backups**: Backup files created before each save
 - **🏥 Health Check**: Server health monitoring endpoint
-- **⚡ Performance Optimized**: Efficient deep equality (6x faster), optimized cloning (2.4x faster)
+- **⚡ Performance Optimized**: Efficient deep equality (3-6x faster, up to 280x+ for large objects), optimized cloning (3.5-4.5x faster), circular reference safe
 - **🔄 Immutable State**: Immutable array operations for reliable state management
 - **⏱️ Request Timeouts**: Automatic timeout handling for API requests
 
@@ -296,15 +296,20 @@ All endpoints return errors in this format:
 
 The project includes comprehensive test coverage:
 
-- **Unit Tests**: 60 tests covering validation, file operations, and equality utilities
+- **Unit Tests**: 79 tests covering validation, file operations, and equality utilities (including Date, NaN, and circular reference handling)
 - **Integration Tests**: 32 tests covering API route handlers
-- **Total**: 111 tests, all passing ✅
+- **Total**: 130 tests, all passing ✅
 
 Run tests with:
 ```bash
 npm test              # Run all tests
 npm run test:watch    # Watch mode for development
 npm run test:coverage # Generate coverage report
+```
+
+**Performance Benchmarks**: To verify performance metrics, run:
+```bash
+npx tsx tests/benchmark/performance.bench.ts
 ```
 
 ### Development Workflow
@@ -377,8 +382,8 @@ The client automatically connects to the API server on port 3001 in development 
 
 ## ⚡ Performance Features
 
-- **Optimized State Comparison**: Custom deep equality function (6x faster than JSON.stringify)
-- **Efficient Cloning**: Lightweight deep clone utility (2.4x faster than structuredClone)
+- **Optimized State Comparison**: Custom deep equality function (3-6x faster than JSON.stringify, handles circular references, scales better with larger objects)
+- **Efficient Cloning**: Lightweight deep clone utility (3.5-4.5x faster than structuredClone, handles circular references)
 - **Immutable Operations**: All array operations use immutable patterns for reliability
 - **Smart Re-rendering**: Only updates changed UI elements, not entire forms
 
@@ -420,10 +425,12 @@ For questions or issues, please refer to the documentation in:
 
 ## 📊 Performance Metrics
 
-- **Deep Equality**: 6x faster than JSON.stringify
-- **State Cloning**: 2.4x faster than structuredClone
-- **Test Coverage**: 111 tests covering all critical paths
+- **Deep Equality**: 3-6x faster than JSON.stringify (performance scales with object size, up to 280x+ for large objects)
+- **State Cloning**: 3.5-4.5x faster than structuredClone (with circular reference detection)
+- **Test Coverage**: 130 tests covering all critical paths including edge cases
 - **Build Time**: ~2 seconds for full TypeScript compilation
+
+*Performance measured on typical publisher config objects (3-50 pages). Larger objects show even greater performance gains.*
 
 ---
 
