@@ -10,7 +10,9 @@ src/
 ├── types.ts               # TypeScript type definitions
 ├── utils/
 │   ├── validation.ts      # Validation utilities (filename, config structure)
-│   └── fileOperations.ts  # File I/O operations (read, write, backup)
+│   ├── fileOperations.ts  # File I/O operations (read, write, backup)
+│   ├── constants.ts       # Server-side constants (file limits, patterns)
+│   └── logger.ts          # Structured logging utility
 └── middleware/
     └── logger.ts          # Request logging middleware
 ```
@@ -21,6 +23,7 @@ src/
 - **Path Traversal Protection**: Filename validation prevents directory traversal attacks
 - **Input Validation**: Request body validation ensures data integrity
 - **JSON Payload Limits**: 10MB limit on request body size
+- **File Size Validation**: 1MB limit on individual config files to prevent DoS
 
 ### Validation
 - **Publisher Config Schema**: Validates required fields (publisherId, aliasName, isActive)
@@ -33,9 +36,11 @@ src/
 - **File Existence Checks**: Validates files exist before operations
 
 ### Developer Experience
-- **Request Logging**: Logs all API requests with timestamps
+- **Structured Logging**: Environment-aware logging utility (debug logs only in development)
+- **Request Logging**: Logs all API requests with timestamps and status codes
 - **Type Safety**: Full TypeScript type definitions
 - **Health Check**: `/api/health` endpoint for monitoring
+- **Standardized Errors**: Consistent error message formatting across all endpoints
 
 ## API Endpoints
 
@@ -122,6 +127,7 @@ All endpoints return errors in this format:
 **HTTP Status Codes:**
 - `400`: Bad Request (validation errors)
 - `404`: Not Found (file doesn't exist)
+- `413`: Payload Too Large (config exceeds 1MB limit)
 - `500`: Internal Server Error
 
 ## Environment Variables
@@ -142,6 +148,34 @@ npm start
 ## Backup Files
 
 The server automatically creates `.backup` files before saving changes. These are stored in the `data/` directory and are excluded from git via `.gitignore`.
+
+## Utilities
+
+### `utils/logger.ts`
+Structured logging utility with environment-aware behavior:
+- `logger.debug()` - Only logs in development
+- `logger.info()` - Standard info logs
+- `logger.warn()` - Warning logs
+- `logger.error()` - Error logs with stack traces (dev only)
+- `logger.success()` - Success messages
+
+### `utils/constants.ts`
+Centralized server-side constants:
+- `FILE_LIMITS` - File size limits and payload sizes
+- `VALIDATION_PATTERNS` - Regex patterns for validation
+
+### `utils/validation.ts`
+Validation utilities:
+- `validateFilename()` - Prevents path traversal attacks
+- `validatePublisherConfig()` - Validates config structure
+- `sanitizeFilename()` - Sanitizes unsafe filenames
+
+### `utils/fileOperations.ts`
+File I/O operations:
+- `readJsonFile()` - Safe JSON file reading
+- `writeJsonFile()` - Formatted JSON file writing
+- `createBackup()` - Automatic backup creation
+- `fileExists()` - File existence check
 
 ## Type Safety
 
