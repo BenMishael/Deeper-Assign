@@ -454,7 +454,6 @@ This project is private and proprietary.
 For questions or issues, please refer to the documentation in:
 - `src/README.md` - Server-side documentation
 - `tests/README.md` - Test suite documentation
-- `SERVER_SETUP.md` - Server implementation details
 - `TASK.md` - Original project requirements
 
 ---

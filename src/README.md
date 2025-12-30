@@ -6,7 +6,8 @@ This directory contains the Express.js server implementation for the DeeperDive 
 
 ```
 src/
-├── server.ts              # Main Express server entry point
+├── server.ts              # Express API server (port 3001)
+├── static-server.ts       # Static file server (port 3000)
 ├── types.ts               # TypeScript type definitions
 ├── utils/
 │   ├── validation.ts      # Validation utilities (filename, config structure)
@@ -132,8 +133,16 @@ All endpoints return errors in this format:
 
 ## Environment Variables
 
-- `PORT`: Server port (default: 3000)
+- `PORT`: API server port (default: 3001)
 - `NODE_ENV`: Environment mode (`development` or `production`)
+
+## Port Configuration
+
+The server setup uses two separate servers:
+- **API Server** (`server.ts`): Runs on port `3001` - Handles all API requests
+- **Static Server** (`static-server.ts`): Runs on port `3000` - Serves frontend files
+
+In development, both servers run concurrently via `npm run dev`.
 
 ## Running the Server
 
@@ -185,4 +194,35 @@ All endpoints use TypeScript types from `types.ts`:
 - `ApiError`: Error response format
 - `ApiSuccess`: Success response format
 - `HealthCheckResponse`: Health check response format
+
+## Testing
+
+You can test the server endpoints using curl:
+
+```bash
+# Health check
+curl http://localhost:3001/api/health
+
+# Get publishers
+curl http://localhost:3001/api/publishers
+
+# Get specific publisher
+curl http://localhost:3001/api/publisher/publisher-aurora.json
+
+# Save publisher (example)
+curl -X PUT http://localhost:3001/api/publisher/publisher-aurora.json \
+  -H "Content-Type: application/json" \
+  -d @data/publisher-aurora.json
+```
+
+## Future Enhancements
+
+Optional features that could be added:
+- **Rate Limiting**: Prevent API abuse
+- **Authentication**: Add user authentication
+- **Versioning**: Track config file versions
+- **Audit Log**: Log all configuration changes
+- **CORS Configuration**: Fine-tune cross-origin settings
+- **Compression**: Add gzip compression for responses
+- **HTTPS Support**: For production deployment
 
