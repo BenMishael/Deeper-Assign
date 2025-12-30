@@ -146,16 +146,360 @@ Deeper-Assign/
 ├── media/                 # Media assets (images, videos)
 │   └── Screenshot_*.png   # Application screenshots
 │
-├── docs/                  # Additional documentation
-│
 ├── tsconfig.json          # TypeScript config (server)
 ├── tsconfig.client.json   # TypeScript config (client)
 ├── vitest.config.ts       # Vitest test configuration
 ├── package.json           # Dependencies and scripts
+├── package-lock.json      # Dependency lock file
 ├── README.md              # This file
-├── SERVER_SETUP.md        # Server implementation details
 └── TASK.md                # Original project requirements
 ```
+
+## 🏗️ High-Level Design (HLD)
+
+### System Architecture Overview
+
+The DeeperDive Publisher Config Tool follows a **client-server architecture** with separation of concerns between frontend presentation and backend API services.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Browser (Client)                        │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │  Frontend Application (Port 3000)                         │ │
+│  │  ├── Static Files (HTML/CSS/JS)                           │ │
+│  │  ├── State Management (Reactive Store)                     │ │
+│  │  ├── UI Components (Dynamic Form Editor)                   │ │
+│  │  └── API Client (HTTP Client)                             │ │
+│  └──────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                            │ HTTP Requests
+                            │ (CORS enabled)
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Express API Server (Port 3001)               │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │  API Layer                                                 │ │
+│  │  ├── Request Logging Middleware                           │ │
+│  │  ├── CORS Middleware                                       │ │
+│  │  ├── JSON Body Parser (10MB limit)                        │ │
+│  │  └── Route Handlers                                       │ │
+│  │      ├── GET /api/health                                  │ │
+│  │      ├── GET /api/publishers                              │ │
+│  │      ├── GET /api/publisher/:filename                     │ │
+│  │      └── PUT /api/publisher/:filename                     │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │  Business Logic Layer                                     │ │
+│  │  ├── Validation Utilities                                 │ │
+│  │  │   ├── Filename Validation (Path Traversal Protection) │ │
+│  │  │   └── Config Schema Validation                         │ │
+│  │  ├── File Operations                                      │ │
+│  │  │   ├── Read JSON Files                                  │ │
+│  │  │   ├── Write JSON Files                                 │ │
+│  │  │   └── Create Backups                                   │ │
+│  │  └── Structured Logging                                   │ │
+│  └──────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                            │ File System I/O
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Data Directory (/data)                      │
+│  ├── publishers.json (Registry)                                  │
+│  ├── publisher-*.json (Individual Configs)                      │
+│  └── *.backup (Automatic Backups)                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Component Breakdown
+
+#### **Frontend Components** (Port 3000)
+
+1. **Static File Server** (`src/static-server.ts`)
+   - Serves HTML, CSS, JavaScript, and assets
+   - Handles client-side routing fallback
+   - Port: `3000`
+
+2. **Main Application** (`public/ts/main.ts`)
+   - Application bootstrap and initialization
+   - Event handling and UI orchestration
+   - Publisher selection and navigation
+
+3. **State Management** (`public/ts/state.ts`)
+   - Reactive store with subscription pattern
+   - Immutable state updates
+   - Change tracking (unsaved changes detection)
+
+4. **API Client** (`public/ts/api.ts`)
+   - HTTP communication layer
+   - Request timeout handling (10 seconds)
+   - Error handling and response parsing
+   - Connects to API server on port `3001`
+
+5. **Dynamic Form Editor** (`public/ts/components/editor.ts`)
+   - Generates form fields based on config structure
+   - Handles nested objects and arrays
+   - Real-time validation
+
+6. **Utilities**
+   - `dom.ts`: DOM manipulation helpers
+   - `equality.ts`: Deep equality and cloning (performance optimized)
+   - `constants.ts`: Client-side constants
+
+#### **Backend Components** (Port 3001)
+
+1. **API Server** (`src/server.ts`)
+   - Express.js RESTful API
+   - Port: `3001`
+   - Handles all API requests
+
+2. **Middleware**
+   - `requestLogger`: Logs all requests with timestamps and status codes
+   - CORS: Allows requests from `http://localhost:3000`
+   - JSON Parser: Limits payload size to 10MB
+
+3. **Validation Layer** (`src/utils/validation.ts`)
+   - Filename validation (prevents path traversal)
+   - Publisher config schema validation
+   - Input sanitization
+
+4. **File Operations** (`src/utils/fileOperations.ts`)
+   - Safe JSON file reading/writing
+   - Automatic backup creation
+   - File existence checks
+
+5. **Logging** (`src/utils/logger.ts`)
+   - Structured logging with environment awareness
+   - Debug logs only in development
+
+### Request/Response Lifecycle
+
+#### **1. Application Initialization Flow**
+
+```
+Browser Loads → Static Server (3000) → index.html
+                                      ↓
+                              Load JavaScript Bundles
+                                      ↓
+                              Initialize Application
+                                      ↓
+                              GET /api/publishers
+                                      ↓
+                              API Server (3001)
+                                      ↓
+                              Read publishers.json
+                                      ↓
+                              Return Publishers List
+                                      ↓
+                              Render Publisher Sidebar
+```
+
+#### **2. Publisher Selection Flow**
+
+```
+User Clicks Publisher → Event Handler (main.ts)
+                              ↓
+                    Check for Duplicate Requests
+                    (Debounce + Request Guard)
+                              ↓
+                    Update State (Loading)
+                              ↓
+                    GET /api/publisher/:filename
+                              ↓
+                    API Server (3001)
+                              ↓
+                    Validate Filename
+                              ↓
+                    Read publisher-*.json
+                              ↓
+                    Return Publisher Config
+                              ↓
+                    Update State (Config Loaded)
+                              ↓
+                    Render Dynamic Form Editor
+                              ↓
+                    Update JSON Preview
+```
+
+#### **3. Save Configuration Flow**
+
+```
+User Clicks Save → Validate Form Data
+                        ↓
+                  Check for Unsaved Changes
+                        ↓
+                  Update State (Saving)
+                        ↓
+                  PUT /api/publisher/:filename
+                        ↓
+                  API Server (3001)
+                        ↓
+                  Validate Filename
+                        ↓
+                  Validate Config Schema
+                        ↓
+                  Create Backup (.backup file)
+                        ↓
+                  Write Updated Config
+                        ↓
+                  Return Success Response
+                        ↓
+                  Update State (Save Success)
+                        ↓
+                  Show Success Toast
+                        ↓
+                  Clear Unsaved Changes Flag
+```
+
+### Networking Details
+
+#### **Ports and Services**
+
+| Service | Port | Protocol | Purpose |
+|---------|------|----------|---------|
+| Static File Server | `3000` | HTTP | Serves frontend application (HTML, CSS, JS) |
+| API Server | `3001` | HTTP | Handles all API requests (RESTful endpoints) |
+
+#### **API Routes**
+
+**Base URL**: `http://localhost:3001/api` (development)
+
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| `GET` | `/api/health` | Health check | None | `{ status, timestamp, uptime }` |
+| `GET` | `/api/publishers` | Get all publishers | None | `{ publishers: [...] }` |
+| `GET` | `/api/publisher/:filename` | Get publisher config | None | `PublisherConfig` |
+| `PUT` | `/api/publisher/:filename` | Save publisher config | `PublisherConfig` | `{ success, message, timestamp }` |
+| `OPTIONS` | `*` | CORS preflight | None | `200 OK` |
+
+#### **CORS Configuration**
+
+- **Allowed Origin**: `http://localhost:3000`
+- **Allowed Methods**: `GET`, `PUT`, `OPTIONS`
+- **Allowed Headers**: `Content-Type`
+- **Preflight**: Automatically handled for all routes
+
+#### **Request/Response Format**
+
+**Request Headers:**
+```
+Content-Type: application/json
+Origin: http://localhost:3000
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Error message",
+  "details": "Additional details (development only)"
+}
+```
+
+**HTTP Status Codes:**
+- `200`: Success
+- `304`: Not Modified (cached)
+- `400`: Bad Request (validation error)
+- `404`: Not Found
+- `413`: Payload Too Large (>10MB)
+- `500`: Internal Server Error
+
+### Data Flow Examples
+
+#### **Example 1: Loading Publisher List**
+
+```
+┌─────────┐     GET /api/publishers      ┌──────────┐
+│ Browser │ ────────────────────────────> │   API    │
+│  :3000  │                               │  :3001   │
+└─────────┘                               └──────────┘
+                                                 │
+                                                 │ Read File
+                                                 ▼
+                                            ┌──────────┐
+                                            │  data/   │
+                                            │publishers│
+                                            │  .json   │
+                                            └──────────┘
+                                                 │
+                                                 │ Return JSON
+┌─────────┐     { publishers: [...] }      ┌──────────┐
+│ Browser │ <────────────────────────────── │   API    │
+│  :3000  │                               │  :3001   │
+└─────────┘                               └──────────┘
+     │
+     │ Render Sidebar
+     ▼
+┌─────────┐
+│   UI    │
+└─────────┘
+```
+
+#### **Example 2: Saving Configuration**
+
+```
+┌─────────┐     PUT /api/publisher/       ┌──────────┐
+│ Browser │     publisher-aurora.json     │   API    │
+│  :3000  │ ────────────────────────────> │  :3001   │
+└─────────┘     { config data... }        └──────────┘
+                                                 │
+                                                 │ Validate
+                                                 ▼
+                                            ┌──────────┐
+                                            │Validate & │
+                                            │Sanitize  │
+                                            └──────────┘
+                                                 │
+                                                 │ Create Backup
+                                                 ▼
+                                            ┌──────────┐
+                                            │ publisher │
+                                            │-aurora.json│
+                                            │  .backup  │
+                                            └──────────┘
+                                                 │
+                                                 │ Write File
+                                                 ▼
+                                            ┌──────────┐
+                                            │ publisher│
+                                            │-aurora.json│
+                                            └──────────┘
+                                                 │
+                                                 │ Success
+┌─────────┐     { success: true }          ┌──────────┐
+│ Browser │ <────────────────────────────── │   API    │
+│  :3000  │                               │  :3001   │
+└─────────┘                               └──────────┘
+     │
+     │ Show Toast
+     ▼
+┌─────────┐
+│   UI    │
+└─────────┘
+```
+
+### Security Features
+
+1. **Path Traversal Protection**: Filename validation prevents `../` attacks
+2. **Payload Size Limits**: 10MB limit on request body, 1MB on config files
+3. **CORS Restrictions**: Only allows requests from `localhost:3000`
+4. **Input Validation**: All inputs validated before processing
+5. **Automatic Backups**: Files backed up before modification
+6. **Request Timeouts**: Client-side 10-second timeout prevents hanging requests
+
+### Performance Optimizations
+
+1. **Deep Equality**: Custom implementation (3-6x faster than JSON.stringify)
+2. **Immutable Operations**: Prevents accidental mutations
+3. **Request Deduplication**: Prevents duplicate API calls
+4. **Debouncing**: 300ms debounce on publisher selection
+5. **Efficient Cloning**: Optimized deep clone utility (3.5-4.5x faster)
 
 ## 🚀 Quick Start
 
