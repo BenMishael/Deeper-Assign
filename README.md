@@ -75,7 +75,9 @@ This tool provides a **safe, visual, and intuitive** solution that protects user
 - **File System Operations** - Safe JSON file handling
 
 ### Development Tools
-- **Chrome DevTools MCP** - Used for browser automation and debugging during development
+- **Vitest** - Fast unit and integration testing framework
+- **Supertest** - HTTP assertion library for API testing
+- **Chrome DevTools MCP** - Browser automation and debugging during development
 - **ESLint** - Code quality and consistency
 - **tsx** - TypeScript execution for development
 
@@ -94,34 +96,65 @@ Deeper-Assign/
 │   │   ├── main.ts        # Application entry point
 │   │   ├── types.ts       # Type definitions
 │   │   ├── components/
-│   │   │   └── editor.ts # Dynamic form editor
+│   │   │   └── editor.ts  # Dynamic form editor
 │   │   └── utils/
 │   │       ├── dom.ts     # DOM utilities
 │   │       ├── equality.ts # Deep equality and cloning utilities
 │   │       └── constants.ts # Application constants
-│   ├── js/                # Compiled JavaScript
+│   ├── js/                # Compiled JavaScript (generated)
 │   └── index.html         # Main HTML file
 │
 ├── src/                   # Backend server
 │   ├── server.ts          # Express API server (port 3001)
 │   ├── static-server.ts   # Static file server (port 3000)
 │   ├── types.ts           # Server types
+│   ├── README.md          # Server-side documentation
 │   ├── utils/
 │   │   ├── validation.ts  # Validation utilities
 │   │   ├── fileOperations.ts # File I/O utilities
 │   │   ├── constants.ts   # Server constants
-│   │   └── logger.ts       # Structured logging utility
+│   │   └── logger.ts      # Structured logging utility
 │   └── middleware/
 │       └── logger.ts      # Request logging middleware
 │
+├── tests/                 # Test suite
+│   ├── unit/              # Unit tests
+│   │   ├── equality.test.ts
+│   │   ├── validation.test.ts
+│   │   └── fileOperations.test.ts
+│   ├── integration/       # Integration tests
+│   │   └── api.test.ts
+│   ├── benchmark/         # Performance benchmarks
+│   │   └── performance.bench.ts
+│   ├── fixtures/          # Test data fixtures
+│   │   ├── test-publishers.json
+│   │   └── test-publisher-alpha.json
+│   ├── setup.ts           # Test setup configuration
+│   └── README.md          # Test documentation
+│
 ├── data/                  # Configuration files
 │   ├── publishers.json    # Publisher registry
-│   └── publisher-*.json   # Individual publisher configs
+│   ├── publisher-*.json   # Individual publisher configs
+│   └── *.backup           # Automatic backup files
+│
+├── dist/                  # Compiled output (generated)
+│   ├── public/            # Compiled client code
+│   └── src/               # Compiled server code
+│
+├── coverage/              # Test coverage reports (generated)
 │
 ├── media/                 # Media assets (images, videos)
-│   └── [screenshots, demos, etc.]
+│   └── Screenshot_*.png   # Application screenshots
 │
-└── docs/                  # Additional documentation
+├── docs/                  # Additional documentation
+│
+├── tsconfig.json          # TypeScript config (server)
+├── tsconfig.client.json   # TypeScript config (client)
+├── vitest.config.ts       # Vitest test configuration
+├── package.json           # Dependencies and scripts
+├── README.md              # This file
+├── SERVER_SETUP.md        # Server implementation details
+└── TASK.md                # Original project requirements
 ```
 
 ## 🚀 Quick Start
@@ -289,6 +322,7 @@ All endpoints return errors in this format:
 **HTTP Status Codes:**
 - `400`: Bad Request (validation errors)
 - `404`: Not Found (file doesn't exist)
+- `413`: Payload Too Large (request body exceeds 10MB limit)
 - `500`: Internal Server Error
 
 
@@ -296,7 +330,7 @@ All endpoints return errors in this format:
 
 The project includes comprehensive test coverage:
 
-- **Unit Tests**: 79 tests covering validation, file operations, and equality utilities (including Date, NaN, and circular reference handling)
+- **Unit Tests**: 98 tests covering validation (41), file operations (19), and equality utilities (38) including Date, NaN, and circular reference handling
 - **Integration Tests**: 32 tests covering API route handlers
 - **Total**: 130 tests, all passing ✅
 
@@ -411,6 +445,7 @@ This project is private and proprietary.
 
 - Built with TypeScript for type safety
 - Express.js for the RESTful API
+- Vitest and Supertest for comprehensive testing
 - Chrome DevTools MCP for development and debugging
 - Modern CSS for responsive design
 
@@ -418,6 +453,7 @@ This project is private and proprietary.
 
 For questions or issues, please refer to the documentation in:
 - `src/README.md` - Server-side documentation
+- `tests/README.md` - Test suite documentation
 - `SERVER_SETUP.md` - Server implementation details
 - `TASK.md` - Original project requirements
 
