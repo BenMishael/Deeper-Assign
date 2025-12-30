@@ -355,6 +355,9 @@ function updateDirtyState(): void {
 // Event Handlers
 // ============================================================================
 
+// Track ongoing requests to prevent duplicate calls
+let currentRequest: Promise<void> | null = null;
+
 /**
  * Handle publisher selection
  */
@@ -365,19 +368,34 @@ async function handlePublisherSelect(publisherId: string, filename: string): Pro
     return;
   }
   
+  // Prevent duplicate concurrent requests
+  if (currentRequest) {
+    return;
+  }
+  
   // Clear editing state to re-enable animations for the new publisher
   clearEditingState();
   
   selectPublisher(publisherId);
   setConfigLoading();
   
-  const response = await api.fetchPublisherConfig(filename);
+  // Create request promise and track it
+  currentRequest = (async () => {
+    try {
+      const response = await api.fetchPublisherConfig(filename);
+      
+      if (response.success && response.data) {
+        setConfig(response.data);
+      } else {
+        setConfigError(response.error || 'Failed to load configuration');
+      }
+    } finally {
+      // Clear request tracker when done
+      currentRequest = null;
+    }
+  })();
   
-  if (response.success && response.data) {
-    setConfig(response.data);
-  } else {
-    setConfigError(response.error || 'Failed to load configuration');
-  }
+  await currentRequest;
 }
 
 /**
@@ -502,10 +520,27 @@ function setupEventListeners(): void {
   on(elements.publisherList, 'click', (e) => {
     const item = (e.target as HTMLElement).closest('.publisher-item') as HTMLElement;
     if (item) {
+      e.stopPropagation(); // Prevent event bubbling
       const id = item.dataset.id;
       const file = item.dataset.file;
       if (id && file) {
         handlePublisherSelect(id, file);
+      }
+    }
+  });
+  
+  // Also handle keyboard events for accessibility
+  on(elements.publisherList, 'keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const item = (e.target as HTMLElement).closest('.publisher-item') as HTMLElement;
+      if (item) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = item.dataset.id;
+        const file = item.dataset.file;
+        if (id && file) {
+          handlePublisherSelect(id, file);
+        }
       }
     }
   });
