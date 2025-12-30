@@ -357,18 +357,33 @@ function updateDirtyState(): void {
 
 // Track ongoing requests to prevent duplicate calls
 let currentRequest: Promise<void> | null = null;
+let currentLoadingPublisher: string | null = null;
+let lastClickTime = 0;
+const CLICK_DEBOUNCE_MS = 300; // Prevent rapid duplicate clicks
 
 /**
  * Handle publisher selection
  */
 async function handlePublisherSelect(publisherId: string, filename: string): Promise<void> {
+  // Debounce rapid clicks
+  const now = Date.now();
+  if (now - lastClickTime < CLICK_DEBOUNCE_MS) {
+    return;
+  }
+  lastClickTime = now;
+  
   // Prevent re-rendering if clicking on the already selected publisher
   const state = store.getState();
   if (state.selectedPublisherId === publisherId) {
     return;
   }
   
-  // Prevent duplicate concurrent requests
+  // Prevent duplicate concurrent requests for the same publisher
+  if (currentRequest && currentLoadingPublisher === publisherId) {
+    return;
+  }
+  
+  // Prevent any concurrent requests
   if (currentRequest) {
     return;
   }
@@ -378,6 +393,9 @@ async function handlePublisherSelect(publisherId: string, filename: string): Pro
   
   selectPublisher(publisherId);
   setConfigLoading();
+  
+  // Track which publisher we're loading
+  currentLoadingPublisher = publisherId;
   
   // Create request promise and track it
   currentRequest = (async () => {
@@ -392,6 +410,7 @@ async function handlePublisherSelect(publisherId: string, filename: string): Pro
     } finally {
       // Clear request tracker when done
       currentRequest = null;
+      currentLoadingPublisher = null;
     }
   })();
   
@@ -520,7 +539,9 @@ function setupEventListeners(): void {
   on(elements.publisherList, 'click', (e) => {
     const item = (e.target as HTMLElement).closest('.publisher-item') as HTMLElement;
     if (item) {
+      e.preventDefault(); // Prevent default behavior
       e.stopPropagation(); // Prevent event bubbling
+      e.stopImmediatePropagation(); // Prevent other handlers on the same element
       const id = item.dataset.id;
       const file = item.dataset.file;
       if (id && file) {
@@ -536,6 +557,7 @@ function setupEventListeners(): void {
       if (item) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation(); // Prevent other handlers on the same element
         const id = item.dataset.id;
         const file = item.dataset.file;
         if (id && file) {
